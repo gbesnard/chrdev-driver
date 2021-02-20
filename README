@@ -1,1 +1,43 @@
-A simple character device driver module to foo the bar in Kernel space.
+Character device driver
+=======================
+
+Overview
+--------
+
+A simple character device driver module to control an output GPIO on an Rasperry Pi Zero W.
+
+
+Usage
+-----
+
+Load module
+
+	modprobe foobar_chrdev.ko
+
+Check loaded module
+
+	lsmod
+
+Check dmesg for MAJOR_NUMBER
+
+	dmesg
+
+Create a device file
+	
+	mknod /dev/foobar_chrdev c [MAJOR_NUMBER] 0
+
+Change GPIO ouput pin level
+
+	echo [0..1] > /dev/foobar_chrdev
+
+Read GPIO ouput pin level
+
+	cat /dev/foobar_chrdev
+
+Unload module
+
+	modeprobe -r foobar_chrdev
+
+Remove device file
+
+	rm /dev/foobar_chrdev
