@@ -15,6 +15,7 @@
 
 static dev_t dev;
 static struct cdev cdev;
+static struct class *cldev;
 
 static int bytes_read;
 
@@ -101,6 +102,7 @@ static ssize_t foobar_chrdev_write(struct file *file,
 int foobar_chrdev_init(void)
 {
 	int err;
+	struct device *device;
 
 	printk(KERN_INFO "%s: %s\n", DRIVER_NAME, __FUNCTION__);
 
@@ -112,6 +114,18 @@ int foobar_chrdev_init(void)
 	}
 
 	printk(KERN_INFO "%s: chrdev allocation done, major %d\n", DRIVER_NAME, MAJOR(dev));
+
+	cldev = class_create(THIS_MODULE, "chrdev");
+	if (cldev == NULL) {
+		printk(KERN_INFO "%s: class_create failed\n", DRIVER_NAME);
+		return -1;
+	}
+
+	device = device_create(cldev, NULL, dev, NULL, "foobar_chrdev");
+	if (device == NULL) {
+		printk(KERN_INFO "%s: device_create failed\n", DRIVER_NAME);
+    	return -1;
+	}
 
 	/* Init cdev */
 	cdev_init(&cdev, &foobar_chrdev_fops);
@@ -153,6 +167,8 @@ void foobar_chrdev_exit(void)
 	gpio_free(GPIO_LINE);
 
 	/* Delete character device driver */
+	device_destroy(cldev, dev);
+	class_destroy(cldev);
 	cdev_del(&cdev);
     unregister_chrdev_region(dev, 1);
 }
