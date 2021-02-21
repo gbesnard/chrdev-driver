@@ -3,12 +3,18 @@
 #include <linux/fs.h>
 #include <linux/gpio.h>
 #include <linux/uaccess.h>
+#include "linux/device.h"
+#include "linux/cdev.h"
 
 #define DRIVER_NAME "foobar_chrdev"
 
+#define BASE_MINOR  0
+#define MINOR_COUNT 1
+
 #define GPIO_LINE 16 
 
-static int major_number;
+static dev_t dev;
+static struct cdev cdev;
 
 static int bytes_read;
 
@@ -98,15 +104,22 @@ int foobar_chrdev_init(void)
 
 	printk(KERN_INFO "%s: %s\n", DRIVER_NAME, __FUNCTION__);
 
-	/* Register character device driver, major number dynamically allocated */
-	major_number = register_chrdev(0, DRIVER_NAME, &foobar_chrdev_fops);
-	if (major_number < 0) {
-		printk(KERN_INFO "%s: register_chrdev failed: %d\n", DRIVER_NAME, major_number);
-		return major_number;
+	/* Allocate chrdev, major number dynamically allocated */
+	err = alloc_chrdev_region(&dev, BASE_MINOR, MINOR_COUNT, DRIVER_NAME);
+	if (err < 0) {
+		printk(KERN_INFO "%s: alloc_chrdev_region failed: %d\n", DRIVER_NAME, err);
+		return err;
 	}
 
-	printk(KERN_INFO "%s: run 'mknod /dev/%s c %d 0' to create a dev file.\n", 
-		DRIVER_NAME, DRIVER_NAME, major_number);
+	printk(KERN_INFO "%s: chrdev allocation done, major %d\n", DRIVER_NAME, MAJOR(dev));
+
+	/* Init cdev */
+	cdev_init(&cdev, &foobar_chrdev_fops);
+	err = cdev_add(&cdev, dev, 1);
+	if (err < 0) {
+		printk(KERN_INFO "%s: cdev_add failed: %d\n", DRIVER_NAME, err);
+		return err;
+	}
 
 	/* Check GPIO validity */
 	err = gpio_is_valid(GPIO_LINE);
@@ -139,8 +152,9 @@ void foobar_chrdev_exit(void)
 	/* Free claimed GPIO */
 	gpio_free(GPIO_LINE);
 
-	/* Register character device driver */
-	unregister_chrdev(major_number, DRIVER_NAME); 
+	/* Delete character device driver */
+	cdev_del(&cdev);
+    unregister_chrdev_region(dev, 1);
 }
 
 module_init(foobar_chrdev_init);
