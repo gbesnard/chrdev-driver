@@ -32,5 +32,4 @@ Read GPIO ouput pin level
 
 Unload module
 
-	modeprobe -r foobar_chrdev
-
+	modprobe -r foobar_chrdev
